@@ -4,11 +4,11 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/caascade/posgreSQL/posgresql/app"
-	"github.com/caascade/posgreSQL/posgresql/block"
 	"github.com/caascade/posgreSQL/posgresql/client"
 	"github.com/caascade/posgreSQL/posgresql/controller"
 	"github.com/caascade/posgreSQL/posgresql/executor"
 	"github.com/caascade/posgreSQL/posgresql/resource"
+	"github.com/caascade/posgreSQL/posgresql/server"
 )
 
 var (
@@ -18,11 +18,11 @@ var (
 		"create-resource",
 		"run-controller",
 		"create-posgres-app",
-		"block",
+		"server",
 	}
 )
 
-func Exec(kubeconf string, inCluster bool) error {
+func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int) error {
 	seedMap := map[string]executor.Token{}
 
 	for i := range steps {
@@ -45,7 +45,7 @@ func Exec(kubeconf string, inCluster bool) error {
 	resource.Init(seedMap["create-resource"].Uuid)
 	controller.Init(seedMap["run-controller"].Uuid)
 	app.Init(seedMap["create-posgres-app"].Uuid)
-	block.Init(seedMap["block"].Uuid)
+	server.Init(seedMap["server"].Uuid, listenAddr, listenPort)
 
 	return executor.Exec(seedList)
 }

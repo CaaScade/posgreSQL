@@ -9,6 +9,9 @@ import (
 type CmdlineArgs struct {
 	Kubeconf  string
 	InCluster bool
+
+	ListenAddress string
+	ListenPort    int
 }
 
 func ScanCmdline() (*CmdlineArgs, error) {
@@ -22,6 +25,8 @@ func ScanCmdline() (*CmdlineArgs, error) {
 func (args *CmdlineArgs) addFlags() {
 	flag.StringVar(&args.Kubeconf, "kube-config", "", "absolute path to the kubeconf file for the cluster")
 	flag.BoolVar(&args.InCluster, "in-cluster", false, "Specifies if the controller is running as a pod within the cluster")
+	flag.StringVar(&args.ListenAddress, "listen-address", "0.0.0.0", "Specifies the address on which the server listens")
+	flag.IntVar(&args.ListenPort, "listen-port", 8080, "Specifies the port on which the server listens")
 }
 
 func (args *CmdlineArgs) scan() {

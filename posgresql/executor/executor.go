@@ -2,6 +2,7 @@ package executor
 
 import (
 	"sync"
+	"time"
 )
 
 /* This package and all other packages withing this subdirectory
@@ -46,7 +47,7 @@ import (
 type _ interface {
 	Exec(bool, string) error
 
-	ObtainToken(string) string
+	ObtainToken(string)
 	ReturnToken(string)
 
 	SetErrorState(string, error)
@@ -56,7 +57,6 @@ type Token struct {
 	Name   string
 	Uuid   string
 	Actors map[string]bool
-	Lock   sync.Mutex
 }
 
 var (
@@ -67,6 +67,7 @@ var (
 	refreshMap  map[string]chan bool
 	tokenReturn chan bool
 	refreshLock sync.Mutex
+	taskLock    sync.Mutex
 )
 
 func init() {
@@ -80,10 +81,10 @@ func Exec(tokens []Token) error {
 	go func() {
 		for i := range tokens {
 			<-tokenReturn
-			task = tokens[i]
-			for i := range refreshMap {
-				refreshMap[i] <- true
-			}
+			taskLock.Lock()
+			task.Name = tokens[i].Name
+			task.Uuid = tokens[i].Uuid
+			taskLock.Unlock()
 		}
 		<-tokenReturn
 		doneChan <- true
@@ -101,59 +102,48 @@ func Exec(tokens []Token) error {
 	return nil
 }
 
-func ObtainToken(actor, uuid string) bool {
-	tokenRefresh := registerListener(actor)
+func ObtainToken(actor, uuid string) {
 	for {
-		if task.Uuid == uuid {
+		taskUuid := task.Uuid
+		if taskUuid == uuid {
 			addActor(actor)
-			unregisterListener(actor)
-			return true
+			return
 		}
-		<-tokenRefresh
+		<-time.After(1 * time.Second)
 	}
-	// Can never get here
-	return false
 }
 
 func ReturnToken(actor string, uuid string) {
-	if task.Name == actor {
-		if task.Uuid == uuid {
+	taskUuid := task.Uuid
+	taskName := task.Name
+	if taskName == actor {
+		if taskUuid == uuid {
 			drainActor(actor)
 		}
 	}
 }
 
 func addActor(actor string) {
-	task.Lock.Lock()
+	taskLock.Lock()
+	if task.Actors == nil {
+		task.Actors = map[string]bool{}
+	}
 	task.Actors[actor] = true
-	task.Lock.Unlock()
-}
-
-func registerListener(actor string) chan bool {
-	waitChan := make(chan bool, 0)
-	refreshLock.Lock()
-	refreshMap[actor] = waitChan
-	refreshLock.Unlock()
-	return waitChan
-}
-
-func unregisterListener(actor string) {
-	refreshLock.Lock()
-	delete(refreshMap, actor)
-	refreshLock.Unlock()
+	taskLock.Unlock()
 }
 
 func drainActor(actor string) {
-	task.Lock.Lock()
+	taskLock.Lock()
 	delete(task.Actors, actor)
-	task.Lock.Unlock()
 	if len(task.Actors) == 0 {
 		tokenReturn <- true
 	}
+	taskLock.Unlock()
 }
 
 func SetErrorState(uuid string, err error) {
-	if task.Uuid == uuid {
+	taskUuid := task.Uuid
+	if taskUuid == uuid {
 		errChan <- err
 	}
 }

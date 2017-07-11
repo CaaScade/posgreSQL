@@ -26,7 +26,6 @@ func Init(uuid, kubeconf string, inCluster bool) {
 	registration_uuid = uuid
 	go func() {
 		executor.ObtainToken(task, uuid)
-		log.Info("initializing task: init-client")
 		initClient(kubeconf, inCluster)
 		executor.ReturnToken(task, uuid)
 	}()

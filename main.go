@@ -15,7 +15,7 @@ func main() {
 		log.Fatalf("Error initializing controller: %v", err)
 	}
 
-	if err := posgresql.Exec(input.Kubeconf, input.InCluster); err != nil {
+	if err := posgresql.Exec(input.Kubeconf, input.InCluster, input.ListenAddress, input.ListenPort); err != nil {
 		log.Fatalf("Error running %s Application: %v", constants.APP_NAME, err)
 	}
 }

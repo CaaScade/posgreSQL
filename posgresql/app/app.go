@@ -11,6 +11,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type _ interface {
+	GetApp() resource.Application
+}
+
 const task = "create-posgres-app"
 
 var registration_uuid string
@@ -44,9 +48,22 @@ func createApp() {
 
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			log.Errorf("app already exists")
 			return
 		}
 		executor.SetErrorState(registration_uuid, err)
 	}
+}
+
+func GetApp() resource.Application {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		executor.SetErrorState(registration_uuid, err)
+	}
+	return posgresApp
 }
