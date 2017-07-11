@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/caascade/posgreSQL/posgresql/executor"
@@ -13,6 +15,7 @@ import (
 
 type _ interface {
 	GetApp() resource.Application
+	UpdateApp(resource.Application) (int, string)
 }
 
 const task = "create-posgres-app"
@@ -36,7 +39,10 @@ func createApp() {
 			Name: "posgres",
 		},
 		Spec: resource.ApplicationSpec{
-			Scale: 1,
+			Scale: 0,
+		},
+		Status: resource.ApplicationStatus{
+			State: "Created",
 		},
 	}
 	var result resource.Application
@@ -66,4 +72,23 @@ func GetApp() resource.Application {
 		executor.SetErrorState(registration_uuid, err)
 	}
 	return posgresApp
+}
+
+func UpdateApp(posgresApp []byte) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	newAppObj := resource.Application{}
+	err := client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(posgresApp).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
 }

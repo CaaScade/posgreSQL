@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
@@ -47,9 +48,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		w.Write(data)
 	}
 	if r.Method == "PUT" {
-		_, err := w.Write([]byte("Unsupported"))
+		body, err := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
 		if err != nil {
-			log.Errorf("Error writing data %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
 		}
+		status, resp := app.UpdateApp(body)
+		w.WriteHeader(status)
+		w.Write([]byte(resp))
 	}
 }

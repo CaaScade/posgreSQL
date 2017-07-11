@@ -67,6 +67,7 @@ func addApp(obj interface{}) {
 
 func updateApp(oldObj, newObj interface{}) {
 	log.Infof("Updating app object %s", newObj.(*resource.Application).ObjectMeta.Name)
+	handleUpdate(oldObj.(*resource.Application), newObj.(*resource.Application))
 }
 
 func deleteApp(obj interface{}) {
