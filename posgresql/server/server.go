@@ -10,6 +10,7 @@ import (
 
 	"github.com/caascade/posgreSQL/posgresql/app"
 	"github.com/caascade/posgreSQL/posgresql/executor"
+	"github.com/caascade/posgreSQL/posgresql/resource"
 
 	"github.com/gorilla/mux"
 )
@@ -31,6 +32,8 @@ func Init(uuid string, listenAddr string, listenPort int) {
 func serve(addr string, port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler).Methods("GET", "PUT")
+	r.HandleFunc("/secret", secretHandler).Methods("POST")
+	r.HandleFunc("/address", addressHandler).Methods("GET")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),
@@ -59,4 +62,30 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		w.Write([]byte(resp))
 	}
+}
+
+func secretHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	passwd := resource.Password{}
+	err = json.Unmarshal(body, &passwd)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	status, resp := app.SetPassword(passwd)
+	w.WriteHeader(status)
+	w.Write([]byte(resp))
+}
+
+func addressHandler(w http.ResponseWriter, r *http.Request) {
+	status, addresses := app.GetAddresses()
+	w.WriteHeader(status)
+	w.Write([]byte(addresses))
 }

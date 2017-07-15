@@ -2,6 +2,7 @@ package cmdline
 
 import (
 	"fmt"
+	"os"
 
 	flag "github.com/spf13/pflag"
 )
@@ -12,6 +13,8 @@ type CmdlineArgs struct {
 
 	ListenAddress string
 	ListenPort    int
+
+	SelfIP string
 }
 
 func ScanCmdline() (*CmdlineArgs, error) {
@@ -27,6 +30,7 @@ func (args *CmdlineArgs) addFlags() {
 	flag.BoolVar(&args.InCluster, "in-cluster", false, "Specifies if the controller is running as a pod within the cluster")
 	flag.StringVar(&args.ListenAddress, "listen-address", "0.0.0.0", "Specifies the address on which the server listens")
 	flag.IntVar(&args.ListenPort, "listen-port", 8080, "Specifies the port on which the server listens")
+	flag.StringVar(&args.SelfIP, "self-ip", "", "address of the controller")
 }
 
 func (args *CmdlineArgs) scan() {
@@ -42,6 +46,9 @@ func (args *CmdlineArgs) validate() error {
 	}
 	if args.Kubeconf == "" {
 		return fmt.Errorf("out-of-cluster kube config file path is not specified")
+	}
+	if args.SelfIP == "" {
+		args.SelfIP = os.Getenv("SELF_IP")
 	}
 	return nil
 }

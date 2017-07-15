@@ -22,7 +22,7 @@ var (
 	}
 )
 
-func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int) error {
+func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int, selfIP string) error {
 	seedMap := map[string]executor.Token{}
 
 	for i := range steps {
@@ -43,7 +43,7 @@ func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int) er
 
 	client.Init(seedMap["init-client"].Uuid, kubeconf, inCluster)
 	resource.Init(seedMap["create-resource"].Uuid)
-	controller.Init(seedMap["run-controller"].Uuid)
+	controller.Init(seedMap["run-controller"].Uuid, selfIP)
 	app.Init(seedMap["create-posgres-app"].Uuid)
 	server.Init(seedMap["server"].Uuid, listenAddr, listenPort)
 

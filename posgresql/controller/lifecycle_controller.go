@@ -20,8 +20,11 @@ var registration_uuid string
 var appClient *rest.RESTClient
 var appScheme *runtime.Scheme
 
-func Init(uuid string) {
+var controllerIP string
+
+func Init(uuid string, selfIP string) {
 	registration_uuid = uuid
+	controllerIP = selfIP
 	go func() {
 		log.Info("waiting to run task: run-controller")
 		executor.ObtainToken(task, uuid)
