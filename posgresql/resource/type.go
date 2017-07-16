@@ -47,8 +47,9 @@ type ApplicationSecretRef struct {
 }
 
 type ApplicationStatus struct {
-	State   string `json:"state,omitempty"`
-	Message string `json:"message,omitempty"`
+	State     string    `json:"state,omitempty"`
+	Message   string    `json:"message,omitempty"`
+	Addresses Addresses `json:"addresses,omitempty"`
 }
 
 type ApplicationList struct {

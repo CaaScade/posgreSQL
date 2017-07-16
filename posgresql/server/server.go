@@ -33,7 +33,7 @@ func serve(addr string, port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler).Methods("GET", "PUT")
 	r.HandleFunc("/secret", secretHandler).Methods("POST")
-	r.HandleFunc("/address", addressHandler).Methods("GET")
+	r.HandleFunc("/address", addressHandler).Methods("GET", "PUT")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),
@@ -85,7 +85,27 @@ func secretHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addressHandler(w http.ResponseWriter, r *http.Request) {
-	status, addresses := app.GetAddresses()
-	w.WriteHeader(status)
-	w.Write([]byte(addresses))
+	if r.Method == "GET" {
+		status, addresses := app.GetAddresses()
+		w.WriteHeader(status)
+		w.Write([]byte(addresses))
+	} else if r.Method == "PUT" {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		defer r.Body.Close()
+		addrs := resource.Addresses{}
+		err = json.Unmarshal(data, &addrs)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		status, resp := app.UpdateAddresses(addrs)
+		w.WriteHeader(status)
+		w.Write([]byte(resp))
+	}
 }

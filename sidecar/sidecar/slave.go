@@ -11,6 +11,7 @@ import (
 )
 
 func InitSlave(input *cmdline.CmdlineArgs) {
+	client.UpdateSlaveAddress(input.ControllerIP, input.ControllerPort)
 	masterIP, _ := client.GetMasterAddress(input.ControllerIP, input.ControllerPort)
 	log.Errorf("obtained master IP")
 	cmd := exec.Command("cp", "-r", "/resources/.", "/var/lib/postgresql/data/")

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -19,6 +20,7 @@ type _ interface {
 	UpdateApp(resource.Application) (int, string)
 	SetPassword(resource.Password) (int, string)
 	GetAddresses(resource.Addresses) (int, string)
+	UpdateAddresses(resource.Addresses) (int, string)
 }
 
 const task = "create-posgres-app"
@@ -120,41 +122,54 @@ func SetPassword(passwd resource.Password) (int, string) {
 }
 
 func GetAddresses() (int, string) {
-	kClient := client.GetClient()
-	masterService, err := kClient.CoreV1().Services(apiv1.NamespaceDefault).Get("posgres-master", metav1.GetOptions{})
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return 500, err.Error()
-		}
-	}
-	slaveService, err := kClient.CoreV1().Services(apiv1.NamespaceDefault).Get("posgres-slave", metav1.GetOptions{})
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return 500, err.Error()
-		}
-	}
+	appl := GetApp()
 
-	masterPort := 0
-	if len(masterService.Spec.Ports) > 0 {
-		masterPort = int(masterService.Spec.Ports[0].Port)
-	}
-
-	slavePort := 0
-	if len(slaveService.Spec.Ports) > 0 {
-		slavePort = int(slaveService.Spec.Ports[0].Port)
-	}
-
-	addrs := resource.Addresses{
-		MasterIP:   masterService.Spec.ClusterIP,
-		MasterPort: masterPort,
-
-		SlaveIP:   slaveService.Spec.ClusterIP,
-		SlavePort: slavePort,
-	}
-
-	addresses, err := json.Marshal(addrs)
+	addresses, err := json.Marshal(appl.Status.Addresses)
 	if err != nil {
 		return 500, err.Error()
 	}
 	return 200, string(addresses)
+}
+
+func UpdateAddresses(addrs resource.Addresses) (int, string) {
+	count := 0
+	for {
+		count++
+		if count == 10 {
+			break
+		}
+		client, _ := resource.GetApplicationClientScheme()
+		appl := GetApp()
+		appl.Status.Addresses = addrs
+		appData, err := json.Marshal(appl)
+		if err != nil {
+			return 500, err.Error()
+		}
+		newAppObj := resource.Application{}
+		err = client.Put().
+			Resource(resource.AppResourcePlural).
+			Namespace(apiv1.NamespaceDefault).
+			Name("posgres").
+			Body(appData).
+			Do().Into(&newAppObj)
+		if err == nil {
+			data, _ := json.Marshal(newAppObj.Status.Addresses)
+			return 200, string(data)
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return 500, "Failed to update addresses after 10 retries"
+}
+
+func equivalentAddrs(left, right resource.Addresses) bool {
+	if left.MasterIP == right.MasterIP {
+		if left.MasterPort == right.MasterPort {
+			if left.SlaveIP == right.SlaveIP {
+				if left.SlavePort == right.SlavePort {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
