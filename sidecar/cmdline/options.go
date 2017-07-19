@@ -59,7 +59,7 @@ func (args *CmdlineArgs) validate() error {
 		}
 	}
 
-	if args.ControllerIP == "" {
+	if !args.ModeSidecar && args.ControllerIP == "" {
 		return fmt.Errorf("Caascade controller IP is not set")
 	}
 

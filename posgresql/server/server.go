@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -33,7 +34,10 @@ func serve(addr string, port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler).Methods("GET", "PUT")
 	r.HandleFunc("/secret", secretHandler).Methods("POST")
-	r.HandleFunc("/address", addressHandler).Methods("GET", "PUT")
+	r.HandleFunc("/address", addressHandler).Methods("GET")
+	r.HandleFunc("/address/{type}", addressHandler).Methods("PUT")
+	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST")
+	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),
@@ -84,6 +88,19 @@ func secretHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(resp))
 }
 
+func scaleHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	scale := vars["scale"]
+	scaleNum, err := strconv.Atoi(scale)
+	if err != nil || scaleNum < 1 || scaleNum > 8 {
+		w.WriteHeader(500)
+		w.Write([]byte("Please specify a valid number in range [1, 8]"))
+	}
+	status, message := app.ScaleApp(scaleNum)
+	w.WriteHeader(status)
+	w.Write([]byte(message))
+}
+
 func addressHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		status, addresses := app.GetAddresses()
@@ -97,15 +114,22 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		addrs := resource.Addresses{}
+		addrs := resource.Address{}
 		err = json.Unmarshal(data, &addrs)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte(err.Error()))
 			return
 		}
-		status, resp := app.UpdateAddresses(addrs)
+		vars := mux.Vars(r)
+		status, resp := app.UpdateAddresses(addrs, vars["type"])
 		w.WriteHeader(status)
 		w.Write([]byte(resp))
 	}
+}
+
+func resetHandler(w http.ResponseWriter, r *http.Request) {
+	respCode, msg := app.ResetSlaves()
+	w.WriteHeader(respCode)
+	w.Write([]byte(msg))
 }

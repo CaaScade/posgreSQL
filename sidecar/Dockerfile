@@ -2,7 +2,7 @@ FROM debian:latest
 
 RUN mkdir /resources
 
-RUN apt-get update && apt-get install -y postgresql-client
+RUN apt-get update && apt-get install -y postgresql-client-9.6
 
 ADD posgres-sidecar .
 

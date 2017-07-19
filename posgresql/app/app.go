@@ -2,7 +2,8 @@ package app
 
 import (
 	"encoding/json"
-	"time"
+	"fmt"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -18,14 +19,18 @@ import (
 type _ interface {
 	GetApp() resource.Application
 	UpdateApp(resource.Application) (int, string)
+	ScaleApp(scale int) (int, string)
+
 	SetPassword(resource.Password) (int, string)
 	GetAddresses(resource.Addresses) (int, string)
-	UpdateAddresses(resource.Addresses) (int, string)
+	UpdateAddresses(resource.Address, string) (int, string)
+	ResetSlaves() (int, string)
 }
 
 const task = "create-posgres-app"
 
 var registration_uuid string
+var updateLock sync.Mutex
 
 func Init(uuid string) {
 	registration_uuid = uuid
@@ -80,6 +85,9 @@ func GetApp() resource.Application {
 }
 
 func UpdateApp(posgresApp []byte) (int, string) {
+	updateLock.Lock()
+	defer updateLock.Unlock()
+
 	client, _ := resource.GetApplicationClientScheme()
 	newAppObj := resource.Application{}
 	err := client.Put().
@@ -99,6 +107,9 @@ func UpdateApp(posgresApp []byte) (int, string) {
 }
 
 func SetPassword(passwd resource.Password) (int, string) {
+	updateLock.Lock()
+	defer updateLock.Unlock()
+
 	kClient := client.GetClient()
 	secret := apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -131,45 +142,209 @@ func GetAddresses() (int, string) {
 	return 200, string(addresses)
 }
 
-func UpdateAddresses(addrs resource.Addresses) (int, string) {
-	count := 0
-	for {
-		count++
-		if count == 10 {
-			break
-		}
-		client, _ := resource.GetApplicationClientScheme()
-		appl := GetApp()
-		appl.Status.Addresses = addrs
-		appData, err := json.Marshal(appl)
-		if err != nil {
-			return 500, err.Error()
-		}
-		newAppObj := resource.Application{}
-		err = client.Put().
-			Resource(resource.AppResourcePlural).
-			Namespace(apiv1.NamespaceDefault).
-			Name("posgres").
-			Body(appData).
-			Do().Into(&newAppObj)
-		if err == nil {
-			data, _ := json.Marshal(newAppObj.Status.Addresses)
-			return 200, string(data)
-		}
-		time.Sleep(1 * time.Second)
+func UpdateAddresses(addr resource.Address, addrType string) (int, string) {
+	updateLock.Lock()
+	defer updateLock.Unlock()
+
+	if addrType == "master" {
+		return updateMasterAddress(addr)
+	} else if addrType == "slave" {
+		return addSlaveAddress(addr)
 	}
-	return 500, "Failed to update addresses after 10 retries"
+	return 500, fmt.Sprintf("Unknown addr type %s", addrType)
 }
 
-func equivalentAddrs(left, right resource.Addresses) bool {
-	if left.MasterIP == right.MasterIP {
-		if left.MasterPort == right.MasterPort {
-			if left.SlaveIP == right.SlaveIP {
-				if left.SlavePort == right.SlavePort {
-					return true
-				}
+func DeleteSlaveAddress(addr resource.Address) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+	if len(posgresApp.Status.Addresses.Slaves) == 0 {
+		return 200, "Success"
+	}
+
+	newSlaveAddrs := []resource.Address{}
+
+	for i := range posgresApp.Status.Addresses.Slaves {
+		if posgresApp.Status.Addresses.Slaves[i].IP == addr.IP {
+			if posgresApp.Status.Addresses.Slaves[i].Port == addr.Port {
+				continue
+			}
+		}
+		newSlaveAddrs = append(newSlaveAddrs, posgresApp.Status.Addresses.Slaves[i])
+	}
+
+	posgresApp.Status.Addresses.Slaves = newSlaveAddrs
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+}
+
+func addSlaveAddress(addr resource.Address) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+	if len(posgresApp.Status.Addresses.Slaves) == 0 {
+		posgresApp.Status.Addresses.Slaves = []resource.Address{}
+	}
+
+	alreadyExists := false
+
+	for i := range posgresApp.Status.Addresses.Slaves {
+		if posgresApp.Status.Addresses.Slaves[i].IP == addr.IP {
+			if posgresApp.Status.Addresses.Slaves[i].Port == addr.Port {
+				alreadyExists = true
 			}
 		}
 	}
-	return false
+
+	posgresApp.Status.Addresses.Slaves = append(posgresApp.Status.Addresses.Slaves, addr)
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	if alreadyExists {
+		return 200, string(data)
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+}
+
+func updateMasterAddress(addr resource.Address) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+
+	posgresApp.Status.Addresses.Master.IP = addr.IP
+	posgresApp.Status.Addresses.Master.Port = addr.Port
+
+	data, err := json.Marshal(posgresApp)
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+}
+
+func ScaleApp(scale int) (int, string) {
+	kClient := client.GetClient()
+	slaveDep, err := kClient.ExtensionsV1beta1().Deployments(apiv1.NamespaceDefault).Get("slave", metav1.GetOptions{})
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting slave deployment %s", err.Error())
+	}
+	if int32(scale) == *slaveDep.Spec.Replicas {
+		return 200, fmt.Sprintf("Scale is already %d", scale)
+	}
+	toSet := int32(scale)
+	slaveDep.Spec.Replicas = &toSet
+	updatedDep, err := kClient.ExtensionsV1beta1().Deployments(apiv1.NamespaceDefault).Update(slaveDep)
+	if err != nil {
+		return 500, fmt.Sprintf("Error updating slave deployment %s", err.Error())
+	}
+	if *updatedDep.Spec.Replicas == toSet {
+		updated, _ := json.Marshal(updatedDep)
+		return 200, fmt.Sprintf(string(updated))
+	}
+	return 419, fmt.Sprintf("Could not update scale")
+}
+
+func ResetSlaves() (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+
+	posgresApp.Status.Addresses.Slaves = []resource.Address{}
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
 }

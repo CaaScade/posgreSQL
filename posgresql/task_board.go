@@ -7,6 +7,7 @@ import (
 	"github.com/caascade/posgreSQL/posgresql/client"
 	"github.com/caascade/posgreSQL/posgresql/controller"
 	"github.com/caascade/posgreSQL/posgresql/executor"
+	"github.com/caascade/posgreSQL/posgresql/reaper"
 	"github.com/caascade/posgreSQL/posgresql/resource"
 	"github.com/caascade/posgreSQL/posgresql/server"
 )
@@ -18,6 +19,7 @@ var (
 		"create-resource",
 		"run-controller",
 		"create-posgres-app",
+		"reaper",
 		"server",
 	}
 )
@@ -45,6 +47,7 @@ func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int, se
 	resource.Init(seedMap["create-resource"].Uuid)
 	controller.Init(seedMap["run-controller"].Uuid, selfIP)
 	app.Init(seedMap["create-posgres-app"].Uuid)
+	reaper.Init(seedMap["reaper"].Uuid)
 	server.Init(seedMap["server"].Uuid, listenAddr, listenPort)
 
 	return executor.Exec(seedList)

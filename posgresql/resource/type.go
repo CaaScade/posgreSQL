@@ -13,11 +13,13 @@ type Password struct {
 }
 
 type Addresses struct {
-	MasterIP   string `json:"masterIP"`
-	MasterPort int    `json:"masterPort"`
+	Master Address   `master`
+	Slaves []Address `slaves`
+}
 
-	SlaveIP   string `json:"slaveIP"`
-	SlavePort int    `json:"slavePort"`
+type Address struct {
+	IP   string `json:"ip"`
+	Port int    `json:"port"`
 }
 
 type Application struct {
