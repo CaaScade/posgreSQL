@@ -10,6 +10,7 @@ import (
 	"github.com/caascade/posgreSQL/posgresql/reaper"
 	"github.com/caascade/posgreSQL/posgresql/resource"
 	"github.com/caascade/posgreSQL/posgresql/server"
+	"github.com/caascade/posgreSQL/posgresql/web"
 )
 
 var (
@@ -20,11 +21,12 @@ var (
 		"run-controller",
 		"create-posgres-app",
 		"reaper",
+		"web",
 		"server",
 	}
 )
 
-func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int, selfIP string) error {
+func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int, selfIP, serveDir string) error {
 	seedMap := map[string]executor.Token{}
 
 	for i := range steps {
@@ -48,6 +50,7 @@ func Exec(kubeconf string, inCluster bool, listenAddr string, listenPort int, se
 	controller.Init(seedMap["run-controller"].Uuid, selfIP)
 	app.Init(seedMap["create-posgres-app"].Uuid)
 	reaper.Init(seedMap["reaper"].Uuid)
+	web.Init(seedMap["web"].Uuid, serveDir)
 	server.Init(seedMap["server"].Uuid, listenAddr, listenPort)
 
 	return executor.Exec(seedList)

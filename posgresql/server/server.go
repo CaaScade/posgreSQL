@@ -32,13 +32,13 @@ func Init(uuid string, listenAddr string, listenPort int) {
 
 func serve(addr string, port int) {
 	r := mux.NewRouter()
-	r.HandleFunc("/", handler).Methods("GET", "PUT")
 	r.HandleFunc("/secret", secretHandler).Methods("POST")
 	r.HandleFunc("/address", addressHandler).Methods("GET")
 	r.HandleFunc("/address/{type}", addressHandler).Methods("PUT")
 	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST")
 	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT")
 	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT")
+	r.HandleFunc("/", handler).Methods("GET", "PUT")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),

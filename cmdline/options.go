@@ -14,7 +14,8 @@ type CmdlineArgs struct {
 	ListenAddress string
 	ListenPort    int
 
-	SelfIP string
+	SelfIP   string
+	ServeDir string
 }
 
 func ScanCmdline() (*CmdlineArgs, error) {
@@ -31,6 +32,7 @@ func (args *CmdlineArgs) addFlags() {
 	flag.StringVar(&args.ListenAddress, "listen-address", "0.0.0.0", "Specifies the address on which the server listens")
 	flag.IntVar(&args.ListenPort, "listen-port", 8080, "Specifies the port on which the server listens")
 	flag.StringVar(&args.SelfIP, "self-ip", "", "address of the controller")
+	flag.StringVar(&args.ServeDir, "serve-dir", "/", "path to the directory that the file server will serve")
 }
 
 func (args *CmdlineArgs) scan() {
