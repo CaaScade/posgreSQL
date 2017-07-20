@@ -12,6 +12,8 @@ type CmdlineArgs struct {
 	ModeInitSlave  bool
 	ModeSidecar    bool
 
+	SidecarType string
+
 	ControllerIP   string
 	ControllerPort int
 }
@@ -30,6 +32,7 @@ func (args *CmdlineArgs) addFlags() {
 	flag.BoolVar(&args.ModeSidecar, "sidecar", false, "runs as the postgres sidecar")
 	flag.StringVar(&args.ControllerIP, "controller-address", "", "The address of the application controller")
 	flag.IntVar(&args.ControllerPort, "controller-port", 8080, "The port on which the controller is listening")
+	flag.StringVar(&args.SidecarType, "sidecar-type", "slave", "The type of posgres instance to which this sidecar belongs (master/slave)")
 }
 
 func (args *CmdlineArgs) scan() {
@@ -59,7 +62,7 @@ func (args *CmdlineArgs) validate() error {
 		}
 	}
 
-	if !args.ModeSidecar && args.ControllerIP == "" {
+	if args.ControllerIP == "" {
 		return fmt.Errorf("Caascade controller IP is not set")
 	}
 

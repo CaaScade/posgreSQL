@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -146,6 +147,8 @@ func UpdateAddresses(addr resource.Address, addrType string) (int, string) {
 	updateLock.Lock()
 	defer updateLock.Unlock()
 
+	addr.LastUpdated = time.Now().Unix()
+
 	if addrType == "master" {
 		return updateMasterAddress(addr)
 	} else if addrType == "slave" {
@@ -225,20 +228,21 @@ func addSlaveAddress(addr resource.Address) (int, string) {
 	for i := range posgresApp.Status.Addresses.Slaves {
 		if posgresApp.Status.Addresses.Slaves[i].IP == addr.IP {
 			if posgresApp.Status.Addresses.Slaves[i].Port == addr.Port {
+				posgresApp.Status.Addresses.Slaves[i].LastUpdated = addr.LastUpdated
 				alreadyExists = true
+				break
+
 			}
 		}
 	}
 
-	posgresApp.Status.Addresses.Slaves = append(posgresApp.Status.Addresses.Slaves, addr)
+	if !alreadyExists {
+		posgresApp.Status.Addresses.Slaves = append(posgresApp.Status.Addresses.Slaves, addr)
+	}
 
 	data, err := json.Marshal(posgresApp)
 	if err != nil {
 		return 500, err.Error()
-	}
-
-	if alreadyExists {
-		return 200, string(data)
 	}
 
 	err = client.Put().
@@ -272,6 +276,7 @@ func updateMasterAddress(addr resource.Address) (int, string) {
 
 	posgresApp.Status.Addresses.Master.IP = addr.IP
 	posgresApp.Status.Addresses.Master.Port = addr.Port
+	posgresApp.Status.Addresses.Master.LastUpdated = addr.LastUpdated
 
 	data, err := json.Marshal(posgresApp)
 
@@ -327,6 +332,42 @@ func ResetSlaves() (int, string) {
 	newAppObj := resource.Application{}
 
 	posgresApp.Status.Addresses.Slaves = []resource.Address{}
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+}
+
+func UpdateState(state string) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+
+	posgresApp.Status.State = state
 
 	data, err := json.Marshal(posgresApp)
 	if err != nil {

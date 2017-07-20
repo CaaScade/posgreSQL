@@ -10,10 +10,10 @@ experienced problems with the upper-case variant, so the lower-case was decided.
 Everything using `logrus` will need to use the lower-case:
 `github.com/sirupsen/logrus`. Any package that isn't, should be changed.
 
-**I am terribly sorry for this inconvenience.** Logrus strives hard for backwards
-compatibility, and the author failed to realize the cascading consequences of
-such a name-change. To fix Glide, see [these
+To fix Glide, see [these
 comments](https://github.com/sirupsen/logrus/issues/553#issuecomment-306591437).
+For an in-depth explanation of the casing issue, see [this
+comment](https://github.com/sirupsen/logrus/issues/570#issuecomment-313933276).
 
 **Are you interested in assisting in maintaining Logrus?** Currently I have a
 lot of obligations, and I am unable to provide Logrus with the maintainership it
@@ -372,6 +372,7 @@ The built-in logging formatters are:
 
 Third party logging formatters:
 
+* [`FluentdFormatter`](https://github.com/joonix/log). Formats entries that can by parsed by Kubernetes and Google Container Engine.
 * [`logstash`](https://github.com/bshuster-repo/logrus-logstash-hook). Logs fields as [Logstash](http://logstash.net) Events.
 * [`prefixed`](https://github.com/x-cray/logrus-prefixed-formatter). Displays log entry source along with alternative layout.
 * [`zalgo`](https://github.com/aybabtme/logzalgo). Invoking the P͉̫o̳̼̊w̖͈̰͎e̬͔̭͂r͚̼̹̲ ̫͓͉̳͈ō̠͕͖̚f̝͍̠ ͕̲̞͖͑Z̖̫̤̫ͪa͉̬͈̗l͖͎g̳̥o̰̥̅!̣͔̲̻͊̄ ̙̘̦̹̦.

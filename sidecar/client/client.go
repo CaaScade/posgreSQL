@@ -13,11 +13,39 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func UpdateMasterAddressNoPanic(controllerIP string, controllerPort int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("%s", r)
+		}
+	}()
+	UpdateAddress("master", controllerIP, controllerPort)
+}
+
+func UpdateSlaveAddressNoPanic(controllerIP string, controllerPort int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("%s", r)
+		}
+	}()
+	UpdateAddress("slave", controllerIP, controllerPort)
+}
+
 func UpdateMasterAddress(controllerIP string, controllerPort int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("%s", r)
+		}
+	}()
 	UpdateAddress("master", controllerIP, controllerPort)
 }
 
 func UpdateSlaveAddress(controllerIP string, controllerPort int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("%s", r)
+		}
+	}()
 	UpdateAddress("slave", controllerIP, controllerPort)
 }
 
@@ -26,18 +54,18 @@ func ResetSlaves(controllerIP string, controllerPort int) {
 	clientx := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s/reset-slaves", controllerIP), nil)
 	if err != nil {
-		log.Fatalf("Error updating master ip %s", err.Error())
+		panic(fmt.Sprintf("Error updating master ip %s", err.Error()))
 	}
 	resp, err := clientx.Do(req)
 	if err != nil {
-		log.Fatalf("Error updating master ip %s", err.Error())
+		panic(fmt.Sprintf("Error updating master ip %s", err.Error()))
 	}
 	if resp.StatusCode != 200 {
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalf("Error reading resp body %s", err.Error())
+			panic(fmt.Sprintf("Error reading resp body %s", err.Error()))
 		}
-		log.Fatalf("got non-200 status code on update. Exiting Status_Code=%d Msg=%s", resp.StatusCode, string(data))
+		panic(fmt.Sprintf("got non-200 status code on update. Exiting Status_Code=%d Msg=%s", resp.StatusCode, string(data)))
 	}
 
 }
@@ -45,7 +73,7 @@ func ResetSlaves(controllerIP string, controllerPort int) {
 func UpdateAddress(addrType, controllerIP string, controllerPort int) {
 	selfIP := os.Getenv("SELF_IP")
 	if selfIP == "" {
-		log.Fatalf("SELF_IP is not set, cannot proceed")
+		panic(fmt.Sprintf("SELF_IP is not set, cannot proceed"))
 	}
 
 	addr := resource.Address{
@@ -54,24 +82,24 @@ func UpdateAddress(addrType, controllerIP string, controllerPort int) {
 
 	data, err := json.Marshal(addr)
 	if err != nil {
-		log.Fatalf("Error marshalling addresses %s", err.Error())
+		panic(fmt.Sprintf("Error marshalling addresses %s", err.Error()))
 	}
 
 	clientx := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s/address/%s", controllerIP, addrType), bytes.NewBuffer(data))
 	if err != nil {
-		log.Fatalf("Error updating %s address %s", addrType, err.Error())
+		panic(fmt.Sprintf("Error updating %s address %s", addrType, err.Error()))
 	}
 	resp, err := clientx.Do(req)
 	if err != nil {
-		log.Fatalf("Error updating %s address %s", addrType, err.Error())
+		panic(fmt.Sprintf("Error updating %s address %s", addrType, err.Error()))
 	}
 	if resp.StatusCode != 200 {
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalf("Error reading resp body %s", err.Error())
+			panic(fmt.Sprintf("Error reading resp body %s", err.Error()))
 		}
-		log.Fatalf("got non-200 status code on update. Exiting Status_Code=%d Msg=%s", resp.StatusCode, string(data))
+		panic(fmt.Sprintf("got non-200 status code on update. Exiting Status_Code=%d Msg=%s", resp.StatusCode, string(data)))
 	}
 }
 
@@ -96,4 +124,17 @@ func GetMasterAddress(controllerIP string, controllerPort int) (string, int) {
 		log.Fatalf("master IP is empty")
 	}
 	return addresses.Master.IP, addresses.Master.Port
+}
+
+func GetState(controllerIP string, controllerPort int) string {
+	resp, err := http.Get(fmt.Sprintf("http://%s/state", controllerIP))
+	if err != nil {
+		log.Fatalf("Error getting state")
+	}
+	state, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Fatalf("Error reading state %s", err.Error())
+	}
+	return string(state)
 }

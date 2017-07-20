@@ -18,8 +18,9 @@ type Addresses struct {
 }
 
 type Address struct {
-	IP   string `json:"ip"`
-	Port int    `json:"port"`
+	IP          string `json:"ip"`
+	Port        int    `json:"port"`
+	LastUpdated int64  `json:"lastUpdated"`
 }
 
 type Application struct {

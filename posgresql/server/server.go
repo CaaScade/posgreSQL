@@ -38,6 +38,7 @@ func serve(addr string, port int) {
 	r.HandleFunc("/address/{type}", addressHandler).Methods("PUT")
 	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST")
 	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT")
+	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),
@@ -132,4 +133,24 @@ func resetHandler(w http.ResponseWriter, r *http.Request) {
 	respCode, msg := app.ResetSlaves()
 	w.WriteHeader(respCode)
 	w.Write([]byte(msg))
+}
+
+func stateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		appl := app.GetApp()
+		w.WriteHeader(200)
+		w.Write([]byte(appl.Status.State))
+	}
+	if r.Method == "PUT" {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		defer r.Body.Close()
+		status, x := app.UpdateState(string(data))
+		w.WriteHeader(status)
+		w.Write([]byte(x))
+	}
 }

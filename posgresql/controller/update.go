@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"strings"
+
 	"github.com/caascade/posgreSQL/posgresql/client"
 	"github.com/caascade/posgreSQL/posgresql/resource"
 
@@ -57,6 +59,32 @@ func updateDeployment(oldObj, newObj *resource.Application) {
 }
 
 func updateState(oldObj, newObj *resource.Application) {
+	if newObj.Status.State == "Recovery" {
+		kClient := client.GetClient()
+		svc, err := kClient.CoreV1().Services(apiv1.NamespaceDefault).Get("posgres", metav1.GetOptions{})
+		if err != nil {
+			log.Errorf("XXXXXXXXXXXX Error updating service posgres %s XXXXXXXXX", err.Error())
+			return
+		}
+		slaveName := ""
+		for _, x := range newObj.Status.Addresses.Slaves {
+			slaveName = strings.Replace(x.IP, ".", "-", -1)
+		}
+		if slaveName == "" {
+			log.Errorf("XXXXNo slave left for recoveryXXXXX")
+			return
+		}
+		if _, ok := svc.Spec.Selector[slaveName]; ok {
+			return
+		}
+		svc.Spec.Selector = map[string]string{}
+		svc.Spec.Selector[slaveName] = "true"
+		_, err = kClient.CoreV1().Services(apiv1.NamespaceDefault).Update(svc)
+		if err != nil {
+			log.Errorf("XXXXX error recoverinng XXXXXX", err)
+		}
+		return
+	}
 	if oldObj.Status.State == "Created" {
 		if newObj.Status.State == "Configured" {
 			//Ensure pre-requisites are available
@@ -189,6 +217,33 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 						"/var/lib/postgresql/data/",
 					},
 				},
+				{
+					Name:  "sidecar",
+					Image: "wlan0/posgres-sidecar:v0.0.1",
+					Args: []string{
+						"--sidecar",
+						"--controller-address",
+						controllerIP,
+						"--sidecar-type",
+						"master",
+					},
+					Env: []apiv1.EnvVar{
+						{
+							Name: "SELF_IP",
+							ValueFrom: &apiv1.EnvVarSource{
+								FieldRef: &apiv1.ObjectFieldSelector{
+									FieldPath: "status.podIP",
+								},
+							},
+						},
+					},
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name:      "data-dir",
+							MountPath: "/var/lib/postgresql/data/",
+						},
+					},
+				},
 			},
 			NodeSelector: map[string]string{
 				"name": "posgres-master",
@@ -264,6 +319,26 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 					Image: "wlan0/posgres-sidecar:v0.0.1",
 					Args: []string{
 						"--sidecar",
+						"--controller-address",
+						controllerIP,
+						"--sidecar-type",
+						"slave",
+					},
+					Env: []apiv1.EnvVar{
+						{
+							Name: "SELF_IP",
+							ValueFrom: &apiv1.EnvVarSource{
+								FieldRef: &apiv1.ObjectFieldSelector{
+									FieldPath: "status.podIP",
+								},
+							},
+						},
+					},
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name:      "data-dir",
+							MountPath: "/var/lib/postgresql/data/",
+						},
 					},
 				},
 			},
