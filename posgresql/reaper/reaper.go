@@ -95,11 +95,14 @@ func detect_master_failure() {
 			kClient := client.GetClient()
 			dep, _ := kClient.ExtensionsV1beta1().Deployments(apiv1.NamespaceDefault).Get("master", metav1.GetOptions{})
 			if dep.ObjectMeta.Name == "master" {
+				if appl.Status.State == "Recovery" {
+					continue
+				}
 				app.UpdateState("Recovery")
 				log.Errorf("The king is dead!")
 			}
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -119,7 +122,7 @@ func start_reaping() {
 
 func checkAlive(addr resource.Address) bool {
 	elapsed := time.Now().Unix() - addr.LastUpdated
-	if elapsed > 90 {
+	if elapsed > 10 {
 		return false
 	}
 	return true

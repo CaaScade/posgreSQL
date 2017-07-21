@@ -90,6 +90,9 @@ func initClientScheme() {
 		executor.SetErrorState(registration_uuid, err)
 	}
 	cfg := client.GetConfig()
+	if cfg == nil {
+		log.Fatalf("Error getting client, it is nil")
+	}
 	cfg.GroupVersion = &SchemeGroupVersion
 	cfg.APIPath = "/apis"
 	cfg.ContentType = runtime.ContentTypeJSON

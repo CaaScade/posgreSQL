@@ -52,7 +52,7 @@ func UpdateSlaveAddress(controllerIP string, controllerPort int) {
 func ResetSlaves(controllerIP string, controllerPort int) {
 
 	clientx := http.Client{}
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s/reset-slaves", controllerIP), nil)
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s:%d/reset-slaves", controllerIP, controllerPort), nil)
 	if err != nil {
 		panic(fmt.Sprintf("Error updating master ip %s", err.Error()))
 	}
@@ -86,7 +86,7 @@ func UpdateAddress(addrType, controllerIP string, controllerPort int) {
 	}
 
 	clientx := http.Client{}
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s/address/%s", controllerIP, addrType), bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s:%d/address/%s", controllerIP, controllerPort, addrType), bytes.NewBuffer(data))
 	if err != nil {
 		panic(fmt.Sprintf("Error updating %s address %s", addrType, err.Error()))
 	}
@@ -105,8 +105,7 @@ func UpdateAddress(addrType, controllerIP string, controllerPort int) {
 
 func GetMasterAddress(controllerIP string, controllerPort int) (string, int) {
 	log.Errorf("Querying for master address")
-	//resp, err := http.Get(fmt.Sprintf("http://%s:%d/address", controllerIP, controllerPort))
-	resp, err := http.Get(fmt.Sprintf("http://%s/address", controllerIP))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/address", controllerIP, controllerPort))
 	if err != nil {
 		log.Fatalf("error getting slave address %s", err.Error())
 	}
@@ -127,7 +126,7 @@ func GetMasterAddress(controllerIP string, controllerPort int) (string, int) {
 }
 
 func GetState(controllerIP string, controllerPort int) string {
-	resp, err := http.Get(fmt.Sprintf("http://%s/state", controllerIP))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/state", controllerIP, controllerPort))
 	if err != nil {
 		log.Fatalf("Error getting state")
 	}

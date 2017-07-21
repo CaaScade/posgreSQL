@@ -52,6 +52,7 @@ func initClient(kubeConf string, inCluster bool) {
 				errChan <- err
 				return nil
 			}
+			global_config = config
 			return config
 		}
 		config, err := clientcmd.BuildConfigFromFlags("", kubeConf)
@@ -69,6 +70,7 @@ func initClient(kubeConf string, inCluster bool) {
 		var err error
 		config := getConfig()
 		if config == nil {
+			log.Errorf("Got nil config")
 			return
 		}
 		client, err = kubernetes.NewForConfig(config)

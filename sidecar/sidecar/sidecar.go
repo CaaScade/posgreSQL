@@ -20,7 +20,7 @@ func InitSidecar(input *cmdline.CmdlineArgs) {
 		case "slave":
 			client.UpdateSlaveAddressNoPanic(input.ControllerIP, input.ControllerPort)
 		}
-		time.Sleep(30 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -30,7 +30,7 @@ func recoveryCheck(ip string, port int) {
 		if state == "Recovery" {
 			promote(ip, port)
 		}
-		time.Sleep(30 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -49,6 +49,6 @@ func promote(ip string, port int) {
 			os.Remove("/var/lib/postgresql/data/postgresql.trigger.5432")
 			os.Exit(1)
 		}
-		time.Sleep(30 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }

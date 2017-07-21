@@ -44,9 +44,7 @@ func (args *CmdlineArgs) validate() error {
 		if args.Kubeconf != "" {
 			return fmt.Errorf("in-cluster flag is set, kube-apiserver flag is unneccessary")
 		}
-		return nil
-	}
-	if args.Kubeconf == "" {
+	} else if args.Kubeconf == "" {
 		return fmt.Errorf("out-of-cluster kube config file path is not specified")
 	}
 	if args.SelfIP == "" {
