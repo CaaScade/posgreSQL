@@ -10,6 +10,7 @@ import (
 	"github.com/caascade/posgreSQL/posgresql/resource"
 
 	apiv1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	log "github.com/Sirupsen/logrus"
@@ -87,22 +88,28 @@ func update_pod_label(pod apiv1.Pod) {
 }
 
 func detect_master_failure() {
-	time.Sleep(90 * time.Second)
 	for {
+		time.Sleep(5 * time.Second)
 		appl := app.GetApp()
 		alive := checkAlive(appl.Status.Addresses.Master)
 		if !alive {
 			kClient := client.GetClient()
-			dep, _ := kClient.ExtensionsV1beta1().Deployments(apiv1.NamespaceDefault).Get("master", metav1.GetOptions{})
+			dep, err := kClient.ExtensionsV1beta1().Deployments(apiv1.NamespaceDefault).Get("master", metav1.GetOptions{})
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			if dep.ObjectMeta.Name == "master" {
 				if appl.Status.State == "Recovery" {
 					continue
+				}
+				if time.Since(dep.ObjectMeta.CreationTimestamp.Time) < (90 * time.Second) {
+					continue
+
 				}
 				app.UpdateState("Recovery")
 				log.Errorf("The king is dead!")
 			}
 		}
-		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -122,7 +129,7 @@ func start_reaping() {
 
 func checkAlive(addr resource.Address) bool {
 	elapsed := time.Now().Unix() - addr.LastUpdated
-	if elapsed > 10 {
+	if elapsed > 15 {
 		return false
 	}
 	return true
