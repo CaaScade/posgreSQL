@@ -7,7 +7,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 var buf chan string
 
@@ -16,6 +22,10 @@ func init() {
 }
 
 func logHandlerPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Errorf("Error upgrading to websocket conn %s", err)
@@ -33,6 +43,10 @@ func logHandlerPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func logHandlerGet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Errorf("Error upgrading to websocket conn %s", err)

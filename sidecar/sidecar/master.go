@@ -28,4 +28,10 @@ func InitMaster(input *cmdline.CmdlineArgs) {
 	if err != nil {
 		log.Fatalf("Error chmoding to 0700 %v", err)
 	}
+
+	cmd = exec.Command("rm", "-r", "/var/lib/postgresql/data/pg_log/postgresql.log")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Errorf("Error deleting old log file %v", err)
+	}
 }

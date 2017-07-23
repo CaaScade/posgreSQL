@@ -32,15 +32,15 @@ func Init(uuid string, listenAddr string, listenPort int) {
 
 func serve(addr string, port int) {
 	r := mux.NewRouter()
-	r.HandleFunc("/secret", secretHandler).Methods("POST")
-	r.HandleFunc("/address", addressHandler).Methods("GET")
-	r.HandleFunc("/address/{type}", addressHandler).Methods("PUT")
-	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST")
-	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT")
-	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT")
+	r.HandleFunc("/secret", secretHandler).Methods("POST", "OPTIONS")
+	r.HandleFunc("/address", addressHandler).Methods("GET", "OPTIONS")
+	r.HandleFunc("/address/{type}", addressHandler).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST", "OPTIONS")
+	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT", "OPTIONS")
 	r.HandleFunc("/log/master/post", logHandlerPost)
-	r.HandleFunc("/log/master", logHandlerGet)
-	r.HandleFunc("/", handler).Methods("GET", "PUT")
+	r.HandleFunc("/log/master/get", logHandlerGet)
+	r.HandleFunc("/", handler).Methods("GET", "PUT", "OPTIONS")
 	srv := &http.Server{
 		Handler: r,
 		Addr:    fmt.Sprintf("%s:%d", addr, port),
@@ -52,6 +52,10 @@ func serve(addr string, port int) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	if r.Method == "GET" {
 		appInstance := app.GetApp()
 		data, _ := json.Marshal(appInstance)
@@ -72,6 +76,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func secretHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -92,6 +100,10 @@ func secretHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func scaleHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	vars := mux.Vars(r)
 	scale := vars["scale"]
 	scaleNum, err := strconv.Atoi(scale)
@@ -105,6 +117,10 @@ func scaleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addressHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	if r.Method == "GET" {
 		status, addresses := app.GetAddresses()
 		w.WriteHeader(status)
@@ -132,12 +148,20 @@ func addressHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func resetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	respCode, msg := app.ResetSlaves()
 	w.WriteHeader(respCode)
 	w.Write([]byte(msg))
 }
 
 func stateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	if r.Method == "GET" {
 		appl := app.GetApp()
 		w.WriteHeader(200)

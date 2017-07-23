@@ -13,9 +13,11 @@ import (
 
 func InitSidecar(input *cmdline.CmdlineArgs) {
 	log.Infof("Starting sidecar for posgres %s", input.SidecarType)
-	tail.InitTail("/var/log/postgresql/data/pg_log/postgresql.log")
+	tail.InitTail("/var/lib/postgresql/data/pg_log/postgresql.log")
 	go recoveryCheck(input.ControllerIP, input.ControllerPort)
-	go streamLogs(input.ControllerIP, input.ControllerPort)
+	if input.SidecarType == "master" {
+		go streamLogs(input.ControllerIP, input.ControllerPort)
+	}
 
 	for {
 		switch input.SidecarType {

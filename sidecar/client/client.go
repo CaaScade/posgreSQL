@@ -18,9 +18,15 @@ import (
 func StreamLogs(controllerIP string, controllerPort int, logChan <-chan string) {
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%d", controllerIP, controllerPort), Path: "/log/master/post"}
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Errorf("dial url:%s :%s", u.String(), err.Error())
+		data, erx := ioutil.ReadAll(resp.Body)
+		if erx != nil {
+			log.Errorf("Error reading resp %d %s", resp.StatusCode, erx.Error())
+			return
+		}
+		defer resp.Body.Close()
+		log.Errorf("dial url:%s :%s %s", u.String(), err.Error(), string(data))
 		return
 	}
 	defer c.Close()
