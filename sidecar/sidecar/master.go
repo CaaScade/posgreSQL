@@ -28,5 +28,4 @@ func InitMaster(input *cmdline.CmdlineArgs) {
 	if err != nil {
 		log.Fatalf("Error chmoding to 0700 %v", err)
 	}
-
 }

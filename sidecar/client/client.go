@@ -6,12 +6,32 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/caascade/posgreSQL/posgresql/resource"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/websocket"
 )
+
+func StreamLogs(controllerIP string, controllerPort int, logChan <-chan string) {
+	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%d", controllerIP, controllerPort), Path: "/log/master/post"}
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Errorf("dial url:%s :%s", u.String(), err.Error())
+		return
+	}
+	defer c.Close()
+	for l := range logChan {
+		err := c.WriteMessage(websocket.TextMessage, []byte(l))
+		if err != nil {
+			log.Errorf("Error writing to log reader: %s", err.Error())
+			break
+		}
+	}
+}
 
 func UpdateMasterAddressNoPanic(controllerIP string, controllerPort int) {
 	defer func() {

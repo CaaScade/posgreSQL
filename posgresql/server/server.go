@@ -38,6 +38,8 @@ func serve(addr string, port int) {
 	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST")
 	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT")
 	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT")
+	r.HandleFunc("/log/master/post", logHandlerPost)
+	r.HandleFunc("/log/master", logHandlerGet)
 	r.HandleFunc("/", handler).Methods("GET", "PUT")
 	srv := &http.Server{
 		Handler: r,

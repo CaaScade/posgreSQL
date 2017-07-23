@@ -6,13 +6,17 @@ import (
 
 	"github.com/caascade/posgreSQL/sidecar/client"
 	"github.com/caascade/posgreSQL/sidecar/cmdline"
+	"github.com/caascade/posgreSQL/sidecar/tail"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 func InitSidecar(input *cmdline.CmdlineArgs) {
 	log.Infof("Starting sidecar for posgres %s", input.SidecarType)
+	tail.InitTail("/var/log/postgresql/data/pg_log/postgresql.log")
 	go recoveryCheck(input.ControllerIP, input.ControllerPort)
+	go streamLogs(input.ControllerIP, input.ControllerPort)
+
 	for {
 		switch input.SidecarType {
 		case "master":
@@ -22,6 +26,11 @@ func InitSidecar(input *cmdline.CmdlineArgs) {
 		}
 		time.Sleep(5 * time.Second)
 	}
+}
+
+func streamLogs(ip string, port int) {
+	tailChan := tail.Tail()
+	client.StreamLogs(ip, port, tailChan)
 }
 
 func recoveryCheck(ip string, port int) {

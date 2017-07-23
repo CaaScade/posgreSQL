@@ -37,4 +37,7 @@ spec:
         type: LoadBalancer 
         ports:
                 - port: 8081
+                  name: web
+                - port: 8080
+                  name: api
 

@@ -49,6 +49,9 @@ func createApp() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "posgres",
 		},
+		TypeMeta: metav1.TypeMeta{
+			Kind: "application",
+		},
 		Spec: resource.ApplicationSpec{
 			Scale: 0,
 		},
@@ -64,6 +67,8 @@ func createApp() {
 		Do().Into(&result)
 
 	if err != nil {
+		log.Infof("Error creating app %s", err.Error())
+		UpdateState("Created")
 		if apierrors.IsAlreadyExists(err) {
 			return
 		}
