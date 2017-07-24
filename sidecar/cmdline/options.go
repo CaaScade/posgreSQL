@@ -16,6 +16,9 @@ type CmdlineArgs struct {
 
 	ControllerIP   string
 	ControllerPort int
+
+	// backup options
+	RestoreBackup bool
 }
 
 func ScanCmdline() (*CmdlineArgs, error) {
@@ -33,6 +36,7 @@ func (args *CmdlineArgs) addFlags() {
 	flag.StringVar(&args.ControllerIP, "controller-address", "", "The address of the application controller")
 	flag.IntVar(&args.ControllerPort, "controller-port", 8080, "The port on which the controller is listening")
 	flag.StringVar(&args.SidecarType, "sidecar-type", "slave", "The type of posgres instance to which this sidecar belongs (master/slave)")
+	flag.BoolVar(&args.RestoreBackup, "restore", false, "should restore from backup")
 }
 
 func (args *CmdlineArgs) scan() {

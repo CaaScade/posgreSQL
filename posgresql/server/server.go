@@ -38,6 +38,8 @@ func serve(addr string, port int) {
 	r.HandleFunc("/scale/{scale}", scaleHandler).Methods("POST", "OPTIONS")
 	r.HandleFunc("/reset-slaves", resetHandler).Methods("PUT", "OPTIONS")
 	r.HandleFunc("/state", stateHandler).Methods("GET", "PUT", "OPTIONS")
+	r.HandleFunc("/pub-key", pubKeyHandler).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/secret-key", secretKeyHandler).Methods("PUT", "OPTIONS")
 	r.HandleFunc("/log/master/post", logHandlerPost)
 	r.HandleFunc("/log/master/get", logHandlerGet)
 	r.HandleFunc("/", handler).Methods("GET", "PUT", "OPTIONS")
@@ -176,6 +178,54 @@ func stateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		status, x := app.UpdateState(string(data))
+		w.WriteHeader(status)
+		w.Write([]byte(x))
+	}
+}
+
+func pubKeyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	if r.Method == "GET" {
+		appl := app.GetApp()
+		w.WriteHeader(200)
+		w.Write([]byte(appl.Spec.PublicKey))
+	}
+	if r.Method == "PUT" {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		defer r.Body.Close()
+		status, x := app.UpdatePublicKey(string(data))
+		w.WriteHeader(status)
+		w.Write([]byte(x))
+	}
+}
+
+func secretKeyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	if r.Method == "GET" {
+		appl := app.GetApp()
+		w.WriteHeader(200)
+		w.Write([]byte(appl.Spec.SecretKey))
+	}
+	if r.Method == "PUT" {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		defer r.Body.Close()
+		status, x := app.UpdateSecretKey(string(data))
 		w.WriteHeader(status)
 		w.Write([]byte(x))
 	}

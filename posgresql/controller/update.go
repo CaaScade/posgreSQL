@@ -60,6 +60,9 @@ func updateDeployment(oldObj, newObj *resource.Application) {
 
 func updateState(oldObj, newObj *resource.Application) {
 	if newObj.Status.State == "Recovery" {
+		if oldObj.Status.State == "Recovery" {
+			return
+		}
 		kClient := client.GetClient()
 		svc, err := kClient.CoreV1().Services(apiv1.NamespaceDefault).Get("posgres", metav1.GetOptions{})
 		if err != nil {
@@ -85,13 +88,17 @@ func updateState(oldObj, newObj *resource.Application) {
 		}
 		return
 	}
-	if oldObj.Status.State == "Created" {
+	if oldObj.Status.State == "Created" || oldObj.Status.State == "Restore" {
 		if newObj.Status.State == "Configured" {
+			shouldRestore := false
+			if oldObj.Status.State == "Restore" {
+				shouldRestore = true
+			}
 			//Ensure pre-requisites are available
 			shouldProtect := ensureSecret()
 			shouldStore := ensureStorage()
 			//Deploy pods
-			deployPods(newObj, shouldProtect, shouldStore)
+			deployPods(newObj, shouldProtect, shouldStore, shouldRestore)
 			//Create service
 			createService()
 		}
@@ -146,7 +153,7 @@ func ensureStorage() bool {
 }
 
 //deploy pods with values in newObj
-func deployPods(newObj *resource.Application, passwdProtected, shouldPersist bool) {
+func deployPods(newObj *resource.Application, passwdProtected, shouldPersist, shouldRestore bool) {
 	runAsUser := int64(999)
 	var masterVolSrc apiv1.VolumeSource
 	if shouldPersist {
@@ -160,6 +167,37 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 			EmptyDir: &apiv1.EmptyDirVolumeSource{},
 		}
 	}
+	masterArgs := []string{
+		"--init-master",
+		"--controller-address",
+		controllerIP,
+	}
+	if shouldRestore {
+		masterArgs = append(masterArgs, "--restore")
+	}
+	masterEnv := []apiv1.EnvVar{
+		{
+			Name: "SELF_IP",
+			ValueFrom: &apiv1.EnvVarSource{
+				FieldRef: &apiv1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+	}
+	if shouldRestore {
+		masterEnv = append(
+			masterEnv,
+			apiv1.EnvVar{
+				Name:  "PUBLIC_KEY",
+				Value: newObj.Spec.PublicKey,
+			},
+			apiv1.EnvVar{
+				Name:  "SECRET_KEY",
+				Value: newObj.Spec.SecretKey,
+			})
+	}
+
 	posgresMasterPodTemplate := apiv1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "postgres-master",
@@ -170,23 +208,10 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 		Spec: apiv1.PodSpec{
 			InitContainers: []apiv1.Container{
 				{
-					Name:  "posgres-init",
-					Image: "wlan0/posgres-sidecar:v0.0.1",
-					Args: []string{
-						"--init-master",
-						"--controller-address",
-						controllerIP,
-					},
-					Env: []apiv1.EnvVar{
-						{
-							Name: "SELF_IP",
-							ValueFrom: &apiv1.EnvVarSource{
-								FieldRef: &apiv1.ObjectFieldSelector{
-									FieldPath: "status.podIP",
-								},
-							},
-						},
-					},
+					Name:            "posgres-init",
+					Image:           "wlan0/posgres-sidecar:v0.0.1",
+					Args:            masterArgs,
+					Env:             masterEnv,
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
@@ -257,6 +282,25 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 		},
 	}
 
+	slaveEnv := []apiv1.EnvVar{
+		{
+			Name: "SELF_IP",
+			ValueFrom: &apiv1.EnvVarSource{
+				FieldRef: &apiv1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+		apiv1.EnvVar{
+			Name:  "PUBLIC_KEY",
+			Value: newObj.Spec.PublicKey,
+		},
+		apiv1.EnvVar{
+			Name:  "SECRET_KEY",
+			Value: newObj.Spec.SecretKey,
+		},
+	}
+
 	posgresSlavePodTemplate := apiv1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "posgres-slave",
@@ -324,16 +368,7 @@ func deployPods(newObj *resource.Application, passwdProtected, shouldPersist boo
 						"--sidecar-type",
 						"slave",
 					},
-					Env: []apiv1.EnvVar{
-						{
-							Name: "SELF_IP",
-							ValueFrom: &apiv1.EnvVarSource{
-								FieldRef: &apiv1.ObjectFieldSelector{
-									FieldPath: "status.podIP",
-								},
-							},
-						},
-					},
+					Env: slaveEnv,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
 							Name:      "data-dir",

@@ -35,6 +35,8 @@ type ApplicationSpec struct {
 	DeploymentType    DeploymentType       `json:"deploymentType"`
 	SecretRef         ApplicationSecretRef `json:"secretRef"`
 	ResourceNamespace string               `json:"resourceNamespace"`
+	PublicKey         string               `json:"publicKey"`
+	SecretKey         string               `json:"secretKey"`
 }
 
 type DeploymentType string

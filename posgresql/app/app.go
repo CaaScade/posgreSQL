@@ -359,6 +359,79 @@ func ResetSlaves() (int, string) {
 	return 200, string(newAppObjBytes)
 }
 
+func UpdatePublicKey(pubKey string) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+
+	posgresApp.Spec.PublicKey = pubKey
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+
+}
+
+func UpdateSecretKey(secretKey string) (int, string) {
+	client, _ := resource.GetApplicationClientScheme()
+	var posgresApp resource.Application
+	err := client.Get().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Do().Into(&posgresApp)
+	if err != nil {
+		return 500, fmt.Sprintf("Error getting app obj %s", err.Error())
+	}
+	newAppObj := resource.Application{}
+
+	posgresApp.Spec.SecretKey = secretKey
+
+	data, err := json.Marshal(posgresApp)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	err = client.Put().
+		Resource(resource.AppResourcePlural).
+		Namespace(apiv1.NamespaceDefault).
+		Name("posgres").
+		Body(data).
+		Do().Into(&newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	newAppObjBytes, err := json.Marshal(newAppObj)
+	if err != nil {
+		return 500, err.Error()
+	}
+	return 200, string(newAppObjBytes)
+}
+
 func UpdateState(state string) (int, string) {
 	client, _ := resource.GetApplicationClientScheme()
 	var posgresApp resource.Application
